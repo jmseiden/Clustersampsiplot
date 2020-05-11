@@ -3,7 +3,7 @@ cap program drop clustersampsiplot
 
 program clustersampsiplot
 		version 16
-		syntax, mdes(real) rho(real) [clusters(numlist missingok >0)] [ns_per_cluster(numlist missingok >0)] [base_correl(real max = 1 min = 0 0)] [alpha(real .05)] [beta(real .8)] [savesims(string)]
+		syntax, mdes(real) rho(real) [clusters(numlist missingok >0)] [ns_per_cluster(numlist missingok >0)] [base_correl(real max = 1 min = 0 0)] [alpha(real .05)] [beta(real .8)] [savesims(string)] mdes2(numlist max = 1)
 		
 		
 ***Check to make sure arguments are OK
