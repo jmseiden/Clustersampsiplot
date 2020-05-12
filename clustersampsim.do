@@ -1,23 +1,23 @@
 
-cap program drop clustersampsiplot
+cap program drop clustersampsim
 
-program clustersampsiplot
-		version 16
-		syntax, mdes(real) rho(real) [noplot] [clusters(numlist missingok >0)] [ns_per_cluster(numlist missingok >0)] [base_correl(real 0)] [alpha(real .05)] [beta(real .8)] [savesims(string)] [mdes2(numlist missingok max=1)] [rho2(numlist missingok max=1)] [base_correl2(numlist missingok max=1)] [alpha2(numlist missingok max=1)] [beta2(numlist missingok max=1)]
+program clustersampsim
+		version 12
+		syntax, mdes(real) rho(real) [noplot] [clusters(numlist missingok >0)] [clustersizes(numlist missingok >0)] [base_correl(real 0)] [alpha(real .05)] [beta(real .8)] [savesims(string)] [mdes2(numlist missingok max=1)] [rho2(numlist missingok max=1)] [base_correl2(numlist missingok max=1)] [alpha2(numlist missingok max=1)] [beta2(numlist missingok max=1)]
 		
 ***Check to make sure arguments are OK and whether it is a single or double 
 
-	if "`clusters'" != "" & "`ns_per_cluster'" != "" { 
+	if "`clusters'" != "" & "`clustersizes'" != "" { 
 
-		display as error "Only clusters or ns_per_cluster may be specified"
+		display as error "Only clusters or clustersizes may be specified"
 		
 		exit
 			
 	}
 
-	if "`clusters'" == "" & "`ns_per_cluster'" == "" { 
+	if "`clusters'" == "" & "`clustersizes'" == "" { 
 
-		display as error "Clusters or ns_per_cluster must be specified"
+		display as error "clusters or clustersizes must be specified"
 	
 		exit
 
@@ -77,10 +77,10 @@ program clustersampsiplot
 		local double = 0 
 	}
 
-	*Calculate required ns_per_cluster for a given number of clusters
+	*Calculate required clustersizes for a given number of clusters
 	if "`clusters'" != "" {
 
-		display as result "Calculating ns_per_cluster for clusters: `clusters'"
+		display as result "Calculating clustersizes for clusters: `clusters'"
 
 		preserve
 			
@@ -139,13 +139,13 @@ program clustersampsiplot
 			
 				qui: cap clustersampsi, mu1(`mdes') mu2(0) base_correl(`base_correl') alpha(`alpha') beta(`beta') rho(`rho') k(`x')
 
-				local ns_per_cluster = r(m)
+				local clustersizes = r(m)
 
 				matrix results[`row',1] = `x'
 
-				matrix results[`row',2] = `ns_per_cluster'
+				matrix results[`row',2] = `clustersizes'
 				
-				matrix results[`row',3] = `ns_per_cluster' * `x'
+				matrix results[`row',3] = `clustersizes' * `x'
 				
 				local ++row
 
@@ -238,20 +238,20 @@ program clustersampsiplot
 				*First set of assumptions
 				qui: cap clustersampsi, mu1(`mdes') mu2(0) base_correl(`base_correl') alpha(`alpha') beta(`beta') rho(`rho') k(`x')
 
-				local ns_per_cluster1 = r(m)
+				local clustersizes1 = r(m)
 
-				matrix results[`row',2] = `ns_per_cluster1'
+				matrix results[`row',2] = `clustersizes1'
 
-				matrix results[`row',3] = `ns_per_cluster1' * `x'
+				matrix results[`row',3] = `clustersizes1' * `x'
 
 				*Second set of assumptions
 				qui: cap clustersampsi, mu1(`mdes2') mu2(0) base_correl(`base_correl2') alpha(`alpha2') beta(`beta2') rho(`rho2') k(`x')
 
-				local ns_per_cluster2 = r(m)
+				local clustersizes2 = r(m)
 
-				matrix results[`row',4] = `ns_per_cluster2'
+				matrix results[`row',4] = `clustersizes2'
 				
-				matrix results[`row',5] = `ns_per_cluster2' * `x'
+				matrix results[`row',5] = `clustersizes2' * `x'
 				
 				local ++row
 
@@ -288,12 +288,12 @@ program clustersampsiplot
 
 	}
 
-	*Calculate required clusters for a given number of ns_per_clusters
-		if "`ns_per_cluster'" != "" {
+	*Calculate required clusters for a given number of clustersizess
+		if "`clustersizes'" != "" {
 		
-			display as result "Calculating clusters for ns_per_cluster: `ns_per_cluster' and double is `double'"
+			display as result "Calculating clusters for clustersizes: `clustersizes' and double is `double'"
 			
-			*Calculate required clusters for a given number of ns_per_cluster
+			*Calculate required clusters for a given number of clustersizes
 			preserve
 			
 			clear all 
@@ -302,7 +302,7 @@ program clustersampsiplot
 			if `double' == 0 {		
 
 				*Extract the total number of elements and create a matrix of the correct dimensions
-				local length: word count `ns_per_cluster'
+				local length: word count `clustersizes'
 
 				matrix define results = J(`length',3,.)
 
@@ -311,7 +311,7 @@ program clustersampsiplot
 				*Run the clustersampsi command to get the results and put them in the matrix
 				local row = 1
 
-				foreach x in `ns_per_cluster' {
+				foreach x in `clustersizes' {
 
 					qui: cap clustersampsi, mu1(`mdes') mu2(0) base_correl(`base_correl') alpha(`alpha') beta(`beta') rho(`rho') m(`x')
 
@@ -355,7 +355,7 @@ program clustersampsiplot
 			if `double' == 1 {
 
 				*Extract the total number of elements and create a matrix of the correct dimensions
-				local length: word count `ns_per_cluster'
+				local length: word count `clustersizes'
 
 				matrix define results = J(`length',5,.)
 
@@ -364,7 +364,7 @@ program clustersampsiplot
 				*Run the clustersampsi command to get the results and put them in the matrix
 				local row = 1
 				
-				foreach x in `ns_per_cluster' {
+				foreach x in `clustersizes' {
 
 					matrix results[`row',1] = `x'
 				
@@ -391,14 +391,14 @@ program clustersampsiplot
 				}
 				
 				*Create the results and plot
-				qui: svmat results, names(col)/* 
+				qui: svmat results, names(col)
 
 				la var npercluster"Sample per cluster"
 				la var clusters1 "Clusters per arm (MDES=`mdes'; ICC=`rho'; Base. corr.=`base_correl'; Power=`beta'; Alpha = `alpha')"
 				la var totalsamplesize1 "Total sample size (MDES=`mdes'; ICC=`rho'; Base. corr.=`base_correl'=`rho'; Power=`beta'; Alpha = `alpha')"
 				la var clusters2 "Clusters per arm (MDES=`mdes2'; ICC=`rho2';  Base. corr.=`base_correl2'; Power=`beta2'; Alpha = `alpha2')"
 				la var totalsamplesize2 "Total sample size (MDES=`mdes2'; ICC=`rho2';  Base. corr.=`base_correl2'; Power=`beta2'; Alpha = `alpha2')"
- */
+
 				*Plot if noplot option is not selected
 				if "`plot'" == "" { 
 	
