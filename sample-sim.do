@@ -3,40 +3,36 @@ cap program drop clustersampsiplot
 
 program clustersampsiplot
 		version 16
-		syntax, mdes(real) rho(real) [clusters(numlist missingok >0)] [ns_per_cluster(numlist missingok >0)] [base_correl(real 0)] [alpha(real .05)] [beta(real .8)] [savesims(string)] [mdes2(numlist missingok max=1)] [rho2(numlist missingok max=1)] [base_correl2(numlist missingok max=1)] [alpha2(numlist missingok max=1)] [beta2(numlist missingok max=1)]
+		syntax, mdes(real) rho(real) [noplot] [clusters(numlist missingok >0)] [ns_per_cluster(numlist missingok >0)] [base_correl(real 0)] [alpha(real .05)] [beta(real .8)] [savesims(string)] [mdes2(numlist missingok max=1)] [rho2(numlist missingok max=1)] [base_correl2(numlist missingok max=1)] [alpha2(numlist missingok max=1)] [beta2(numlist missingok max=1)]
 		
 ***Check to make sure arguments are OK and whether it is a single or double 
 
-capture: confirm existence `clusters' 
+	if "`clusters'" != "" & "`ns_per_cluster'" != "" { 
 
-	if _rc == 0 {
+		display as error "Only clusters or ns_per_cluster may be specified"
 		
-		capture: confirm existence `ns_per_cluster' 
-		
-			if _rc == 0 {
+		exit
+			
+	}
 
-			display as error "Only clusters or ns_per_cluster may be specified"
-			
-			exit
-			
-			}
+	if "`clusters'" == "" & "`ns_per_cluster'" == "" { 
+
+		display as error "Clusters or ns_per_cluster must be specified"
+	
+		exit
 
 	}
 
-capture: confirm existence `clusters' 
+	if "`plot'" != "" & "`savesims'" == "" { 
 
-	if _rc != 0 {
+		display as error "Specify a file to write results or allow plotting"
 
-		capture: confirm existence `ns_per_cluster' 
-	
-		display as error "Clusters or ns_per_cluster must be specified"
-		
 		exit
-					
-			}
+
+	}
+
 
 ***Check if the simulation will be with one or two sets of assumptions and set undefined secondary assumptions to original
-
 	if "`mdes2'" != "" | "`rho2'" != "" | "`base_correl2'" != "" | "`alpha2'" != "" | "`beta2'" != "" {
 
 		local double = 1
@@ -82,9 +78,7 @@ capture: confirm existence `clusters'
 	}
 
 	*Calculate required ns_per_cluster for a given number of clusters
-	capture: confirm existence `clusters'
-
-	if _rc == 0 {
+	if "`clusters'" != "" {
 
 		display as result "Calculating ns_per_cluster for clusters: `clusters'"
 
@@ -95,34 +89,50 @@ capture: confirm existence `clusters'
 		*Single set of assumptions		
 		if `double' == 0 {
 
-			*Check if there might be a situation with no solution and report an error if so
-			
-			local min : word 1 of `clusters'
+			*Check if there might be a situation with no solution and report an error if so			
+				*Run a loop to get the min and max cluster size for the list				
+				local min : word 1 of `clusters'
+				
+				local max : word 1 of `clusters'
 
-			forval j = 2/`: word count `clusters'' {
-			    local min = min(`min', `: word `j' of `clusters'')
-			}
+				forval j = 2/`: word count `clusters'' {
+				    local min = min(`min', `: word `j' of `clusters'')
+	 			    local max = max(`max', `: word `j' of `clusters'')
+				} 
 
-			cap clustersampsi, mu1(`mdes') mu2(0) base_correl(`base_correl') alpha(`alpha') beta(`beta') rho(`rho') k(`min')
+				*Check if the largest n of clusters has a solution, and terminate if none solution exists 
+				qui: cap clustersampsi, mu1(`mdes') mu2(0) base_correl(`base_correl') alpha(`alpha') beta(`beta') rho(`rho') k(`max')
 
-			local toosmall = r(min_k)
+				local allmissing = r(min_k)
 
-			if "`toosmall'" != "." {
+				if "`allmissing'" != "." {
 
-				display as error "One or more cluster solutions could not be solved for. Try setting the minimum number of clusters above `min'"
-			
-			}
+					display as error "No solutions are possible with the given range of numbers of clusters." 
+					display as error "Try relaxing some parameters or increase the possible number of clusters."
+
+					exit 
+				
+				}
+
+				*Check if the smallest n of clusters has a solution and report an error if not 
+				qui: cap clustersampsi, mu1(`mdes') mu2(0) base_correl(`base_correl') alpha(`alpha') beta(`beta') rho(`rho') k(`min')
+
+				local somemissing = r(min_k)
+
+				if "`somemissing'" != "." {
+
+					display as error "One or more cluster solutions could not be solved for. Try setting the minimum number of clusters above `min'"
+				
+				}
 
 			*Extract the total number of elements and create a matrix of the correct dimensions
-
 			local length: word count `clusters'
 
 			matrix define results = J(`length',3,.)
 
 			matrix colnames results = clusters npercluster totalsamplesize
 			
-			*Run the clustersampsi command to get the results and put them in the matrix
-			
+			*Run the clustersampsi command to get the results and put them in the matrix		
 			local row = 1
 			
 			foreach x in `clusters' {
@@ -141,32 +151,77 @@ capture: confirm existence `clusters'
 
 			}
 			
-			*Create the results and plot
-
-			svmat results, names(col)
+			*Create the results
+			qui: svmat results, names(col)
 
 			la var npercluster "Required sample per cluster"
 			la var clusters "Numbers of clusters (per arm)"
 			la var totalsamplesize "Total sample size required"
 
-			graph twoway (connected npercluster cluster), ///
-					note("MDES=`mdes'; ICC=`rho'; Baseline correlation=`rho'; Power=`beta'; Alpha = `alpha'")
+			*Plot if noplot option is not selected
+			if "`plot'" == "" { 
+
+				graph twoway (connected npercluster cluster), ///
+						note("MDES=`mdes'; ICC=`rho'; Baseline correlation=`rho'; Power=`beta'; Alpha = `alpha'")
+
+				}
 
 			*Save results if option is enabled
-			capture: confirm existence `savesims' 
-			
-			if _rc == 0 {
+			if "`savesims'" != ""	{ 
 			
 				save "`savesims'", replace
 			
-			}
+				}
 		}
 
 		*Two sets of assumptions		
 		if `double' == 1 {
 
-			*Extract the total number of elements and create a matrix of the correct dimensions
+			*Check if there might be a situation with no solution and report an error if so			
+				*Run a loop to get the min and max cluster size for the list				
+				local min : word 1 of `clusters'
+				
+				local max : word 1 of `clusters'
 
+				forval j = 2/`: word count `clusters'' {
+				    local min = min(`min', `: word `j' of `clusters'')
+	 			    local max = max(`max', `: word `j' of `clusters'')
+				} 
+
+				*Check the largest n of clusters, and terminate the program if no solution exists 
+				qui: cap clustersampsi, mu1(`mdes') mu2(0) base_correl(`base_correl') alpha(`alpha') beta(`beta') rho(`rho') k(`max')
+
+				local allmissing1 = r(min_k)
+
+				qui: cap clustersampsi, mu1(`mdes2') mu2(0) base_correl(`base_correl2') alpha(`alpha2') beta(`beta2') rho(`rho2') k(`max')
+
+				local allmissing2 = r(min_k)
+
+				if "`allmissing1'" != "." | "`allmissing2'" != "." {
+
+					display as error "For at least one set of assumptions, no solutions are possible with the given range of numbers of clusters." 
+					display as error "Try relaxing some parameters or increase the possible number of clusters."
+
+					exit 
+				
+				}			
+
+				*Check if the smallest n of clusters has a solution and report an error if not 
+				qui: cap clustersampsi, mu1(`mdes') mu2(0) base_correl(`base_correl') alpha(`alpha') beta(`beta') rho(`rho') k(`min')
+
+				local somemissing1 = r(min_k)
+
+				qui: cap clustersampsi, mu1(`mdes2') mu2(0) base_correl(`base_correl2') alpha(`alpha2') beta(`beta2') rho(`rho2') k(`min')
+
+				local somemissing2 = r(min_k)
+
+				if "`somemissing1'" != "." |  "`somemissing2'" != "." {
+
+					display as error "One or more cluster solutions could not be solved for. Try setting the minimum number of clusters above `min'"
+				
+				}
+
+			*Extract the total number of elements and create a matrix of the correct dimensions
 			local length: word count `clusters'
 
 			matrix define results = J(`length',5,.)
@@ -174,7 +229,6 @@ capture: confirm existence `clusters'
 			matrix colnames results = clusters npercluster1 totalsamplesize1 npercluster2 totalsamplesize2
 			
 			*Run the clustersampsi command to get the results and put them in the matrix
-			
 			local row = 1
 			
 			foreach x in `clusters' {
@@ -191,7 +245,6 @@ capture: confirm existence `clusters'
 				matrix results[`row',3] = `ns_per_cluster1' * `x'
 
 				*Second set of assumptions
-				di "mu1(`mdes2') mu2(0) base_correl(`base_correl2') alpha(`alpha2') beta(`beta2') rho(`rho2') k(`x')"
 				qui: cap clustersampsi, mu1(`mdes2') mu2(0) base_correl(`base_correl2') alpha(`alpha2') beta(`beta2') rho(`rho2') k(`x')
 
 				local ns_per_cluster2 = r(m)
@@ -204,9 +257,8 @@ capture: confirm existence `clusters'
 
 			}
 			
-			*Create the results and plot
-
-			svmat results, names(col)
+			*Create the results
+			qui: svmat results, names(col)
 
 			la var clusters "Numbers of clusters (per arm)"
 			la var npercluster1 "Sample per cluster (MDES=`mdes'; ICC=`rho'; Base. corr.=`base_correl'; Power=`beta'; Alpha = `alpha')"
@@ -214,17 +266,20 @@ capture: confirm existence `clusters'
 			la var npercluster2 "Sample per cluster (MDES=`mdes2'; ICC=`rho2';  Base. corr.=`base_correl2'; Power=`beta2'; Alpha = `alpha2')"
 			la var totalsamplesize2 "Total sample size (MDES=`mdes2'; ICC=`rho2';  Base. corr.=`base_correl2'; Power=`beta2'; Alpha = `alpha2')"
 
-			graph twoway (connected npercluster1 clusters) (connected npercluster2 cluster), ///
-				ytitle("Required sample size per cluster") legend(ring(0))
+			*Plot if noplot option is not selected
+			if "`plot'" == "" { 
+
+				graph twoway (connected npercluster1 clusters) (connected npercluster2 cluster), ///
+					ytitle("Required sample size per cluster") legend(position(bottom))
+
+				}
 
 			*Save results if option is enabled
-			capture: confirm existence `savesims' 
-			
-			if _rc == 0 {
+			if "`savesims'" != ""	{ 
 			
 				save "`savesims'", replace
 			
-			}
+				}
 		}		
 				
 		restore		
@@ -233,26 +288,20 @@ capture: confirm existence `clusters'
 
 	}
 
-	*Calculate required ns_per_cluster for a given number of clusters
-
-	capture: confirm existence `ns_per_cluster' 
-
-		if _rc == 0 {
+	*Calculate required clusters for a given number of ns_per_clusters
+		if "`ns_per_cluster'" != "" {
 		
-			display as result "Calculating clusters for ns_per_cluster: `ns_per_cluster'"
+			display as result "Calculating clusters for ns_per_cluster: `ns_per_cluster' and double is `double'"
 			
 			*Calculate required clusters for a given number of ns_per_cluster
-
 			preserve
 			
 			clear all 
 
-			*Code for single simulation
-			
-			if `double' == 0 {			
+			*Single set of assumptions
+			if `double' == 0 {		
 
 				*Extract the total number of elements and create a matrix of the correct dimensions
-
 				local length: word count `ns_per_cluster'
 
 				matrix define results = J(`length',3,.)
@@ -260,7 +309,6 @@ capture: confirm existence `clusters'
 				matrix colnames results = npercluster cluster totalsamplesize
 				
 				*Run the clustersampsi command to get the results and put them in the matrix
-				
 				local row = 1
 
 				foreach x in `ns_per_cluster' {
@@ -279,39 +327,41 @@ capture: confirm existence `clusters'
 
 				}
 				
-				*Create the results and plot
-
-				svmat results, names(col)
+				*Create the results
+				qui: svmat results, names(col)
 				
 				la var npercluster "Sample size per cluster"
 				la var cluster "Required numbers of clusters (per arm)"
 				la var totalsamplesize "Total sample size required"
 
+				*Plot if noplot option is not selected
+				if "`plot'" == "" { 
+	
 				graph twoway (connected cluster npercluster), ///
 					note("Minimum Detectable Effect Size: `mdes'; Intra-class correlation: `rho'; Power: `beta'; Error rate: `alpha'")
 				
+					}
+
 				*Save results if option is enabled
-				capture: confirm existence `savesims' 
-				
-				if _rc == 0 {
+				if "`savesims'" != ""	{ 
 				
 					save "`savesims'", replace
 				
-				}	
+					}
+
+			}
 				
 			*Two sets of assumptions		
 			if `double' == 1 {
 
 				*Extract the total number of elements and create a matrix of the correct dimensions
-
 				local length: word count `ns_per_cluster'
 
 				matrix define results = J(`length',5,.)
 
-				matrix colnames results = nperclusters clusters1 totalsamplesize1 clusters2 totalsamplesize2
+				matrix colnames results = npercluster clusters1 totalsamplesize1 clusters2 totalsamplesize2
 				
 				*Run the clustersampsi command to get the results and put them in the matrix
-				
 				local row = 1
 				
 				foreach x in `ns_per_cluster' {
@@ -321,17 +371,16 @@ capture: confirm existence `clusters'
 					*First set of assumptions
 					qui: cap clustersampsi, mu1(`mdes') mu2(0) base_correl(`base_correl') alpha(`alpha') beta(`beta') rho(`rho') m(`x')
 
-					local clusters1 = r(m)
+					local clusters1 = r(k)
 
 					matrix results[`row',2] = `clusters1'
 
 					matrix results[`row',3] = `clusters1' * `x'
 
 					*Second set of assumptions
-					di "mu1(`mdes2') mu2(0) base_correl(`base_correl2') alpha(`alpha2') beta(`beta2') rho(`rho2') k(`x')"
 					qui: cap clustersampsi, mu1(`mdes2') mu2(0) base_correl(`base_correl2') alpha(`alpha2') beta(`beta2') rho(`rho2') m(`x')
 
-					local clusters2 = r(m)
+					local clusters2 = r(k)
 
 					matrix results[`row',4] = `clusters2'
 					
@@ -342,26 +391,30 @@ capture: confirm existence `clusters'
 				}
 				
 				*Create the results and plot
+				qui: svmat results, names(col)/* 
 
-				svmat results, names(col)
-
-				la var clusters "Numbers of clusters (per arm)"
-				la var npercluster1 "Sample per cluster (MDES=`mdes'; ICC=`rho'; Base. corr.=`base_correl'; Power=`beta'; Alpha = `alpha')"
+				la var npercluster"Sample per cluster"
+				la var clusters1 "Clusters per arm (MDES=`mdes'; ICC=`rho'; Base. corr.=`base_correl'; Power=`beta'; Alpha = `alpha')"
 				la var totalsamplesize1 "Total sample size (MDES=`mdes'; ICC=`rho'; Base. corr.=`base_correl'=`rho'; Power=`beta'; Alpha = `alpha')"
-				la var npercluster2 "Sample per cluster (MDES=`mdes2'; ICC=`rho2';  Base. corr.=`base_correl2'; Power=`beta2'; Alpha = `alpha2')"
+				la var clusters2 "Clusters per arm (MDES=`mdes2'; ICC=`rho2';  Base. corr.=`base_correl2'; Power=`beta2'; Alpha = `alpha2')"
 				la var totalsamplesize2 "Total sample size (MDES=`mdes2'; ICC=`rho2';  Base. corr.=`base_correl2'; Power=`beta2'; Alpha = `alpha2')"
+ */
+				*Plot if noplot option is not selected
+				if "`plot'" == "" { 
+	
+				graph twoway (connected npercluster clusters1) (connected npercluster clusters2), ///
+					ytitle("Required sample size per cluster") legend(position(bottom))
 
-				graph twoway (connected npercluster1 clusters) (connected npercluster2 cluster), ///
-					ytitle("Required sample size per cluster") legend(ring(0))
+					 scatter npercluster clusters1
+
+					}
 
 				*Save results if option is enabled
-				capture: confirm existence `savesims' 
-				
-				if _rc == 0 {
+				if "`savesims'" != ""	 { 				
 				
 					save "`savesims'", replace
 				
-				}
+					}
 			}		
 
 				restore
