@@ -5,6 +5,16 @@ program clustersampsim
 		version 12
 		syntax, mdes(real) rho(real) [noplot] [clusters(numlist missingok >0)] [clustersizes(numlist missingok >0)] [base_correl(real 0)] [alpha(real .05)] [beta(real .8)] [savesims(string)] [mdes2(numlist missingok max=1)] [rho2(numlist missingok max=1)] [base_correl2(numlist missingok max=1)] [alpha2(numlist missingok max=1)] [beta2(numlist missingok max=1)]
 		
+***Ensure that the clustersampsi command is installed 
+	qui: cap findfile clustersampsi.ado
+
+	if "`r(fn)'" == "" {
+	         di as txt "user-written package clustersampsi is not installed;"
+	         di as txt "Click {help clustersampsi} to find and install the package"
+	         exit 498
+	}
+
+
 ***Check to make sure arguments are OK and whether it is a single or double 
 
 	if "`clusters'" != "" & "`clustersizes'" != "" { 
