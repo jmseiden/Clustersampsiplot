@@ -1,0 +1,9 @@
+v 3
+d Materials by Jonathan Seiden
+d Harvard Graduate School of Edcuation
+d jseiden@g.harvard.edu
+d https://github.com/jmseiden/clustersampsim
+
+d 'clustersampsim': simulate and plot numbers and sizes for cluster-randomized control trials
+
+p clustersampsim

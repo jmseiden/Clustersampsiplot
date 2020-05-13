@@ -1,0 +1,9 @@
+v 3
+d 'CLUSTERSAMPSIM': clustersampsim package manager
+d 
+d simulate and plot numbers and sizes for cluster-randomized control trials
+d 
+d Distribution-Date:   20200513
+d 
+F clustersampsim.ado
+F clustersampsim.sthlp
