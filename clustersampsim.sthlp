@@ -11,7 +11,10 @@ help for {hi:clustersampsim}
 {title:Syntax}
 
 {phang2}
-{cmdab:clustersampsim}, {{cmdab:clusters(}{it:{help numlist}}{cmd:)} | {cmdab:clustersizes(}{it:{help numlist}}{cmd:)}} {{cmdab:mdes(}{it:effect_size}{cmd:)} {cmdab:rho(}{it:icc}{cmd:)}} {cmdab:base_correl(}{it:corr}{cmd:)} {cmdab:alpha(}{it:sig_level}{cmd:)} {cmdab:beta(}{it:power}{cmd:)} {cmdab:savesims(}{it:{help filename}}{cmd:)} {cmdab:noplot}{cmd:} {cmdab:mdes2(}{it:effect_size}{cmd:)} {cmdab:rho2(}{it:icc}{cmd:)} {cmdab:base_correl2(}{it:corr}{cmd:)} {cmdab:alpha2(}{it:sig_level}{cmd:)} {cmdab:beta2(}{it:power}{cmd:)}
+{cmdab:clustersampsim}, {{cmdab:clusters(}{it:{help numlist}}{cmd:)} | {cmdab:clustersizes(}{it:{help numlist}}{cmd:)}}
+{{cmdab:mdes(}{it:effect_size}{cmd:)} {cmdab:rho(}{it:icc}{cmd:)}} {cmdab:base_correl(}{it:corr}{cmd:)} {cmdab:alpha(}{it:sig_level}{cmd:)}
+{cmdab:beta(}{it:power}{cmd:)} {cmdab:savesims(}{it:{help filename}}{cmd:)} {cmdab:noplot}{cmd:} {cmdab:mdes2(}{it:effect_size}{cmd:)}
+{cmdab:rho2(}{it:icc}{cmd:)} {cmdab:base_correl2(}{it:corr}{cmd:)} {cmdab:alpha2(}{it:sig_level}{cmd:)} {cmdab:beta2(}{it:power}{cmd:)}
 
 {phang2}Where {it:{help numlist}} is a list of desired numbers of clusters or average cluster sizes to simulate.  
 
