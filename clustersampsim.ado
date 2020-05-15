@@ -1,7 +1,7 @@
 
 cap program drop clustersampsim
 
-program clustersampsim
+program clustersampsim, rclass
 		version 12
 		syntax, mdes(real) rho(real) [noplot] [clusters(numlist missingok >0)] [clustersizes(numlist missingok >0)] [base_correl(real 0)] [alpha(real .05)] [beta(real .8)] [savesims(string)] [mdes2(numlist missingok max=1)] [rho2(numlist missingok max=1)] [base_correl2(numlist missingok max=1)] [alpha2(numlist missingok max=1)] [beta2(numlist missingok max=1)]
 		
@@ -182,6 +182,10 @@ program clustersampsim
 				save "`savesims'", replace
 			
 				}
+
+			*Return the matrix
+			return matrix results = results
+
 		}
 
 		*Two sets of assumptions		
@@ -282,14 +286,18 @@ program clustersampsim
 				graph twoway (connected npercluster1 clusters) (connected npercluster2 cluster), ///
 					ytitle("Required sample size per cluster") legend(position(bottom))
 
-				}
+			}
 
 			*Save results if option is enabled
 			if "`savesims'" != ""	{ 
 			
 				save "`savesims'", replace
 			
-				}
+			}
+
+			*Return the matrix
+			return matrix results = results				
+		
 		}		
 				
 		restore		
@@ -339,7 +347,7 @@ program clustersampsim
 				
 				*Create the results
 				qui: svmat results, names(col)
-				
+
 				la var npercluster "Sample size per cluster"
 				la var cluster "Required numbers of clusters (per arm)"
 				la var totalsamplesize "Total sample size required"
@@ -350,14 +358,17 @@ program clustersampsim
 				graph twoway (connected cluster npercluster), ///
 					note("Minimum Detectable Effect Size: `mdes'; Intra-class correlation: `rho'; Power: `beta'; Error rate: `alpha'")
 				
-					}
+				}
 
 				*Save results if option is enabled
 				if "`savesims'" != ""	{ 
 				
 					save "`savesims'", replace
 				
-					}
+				}
+
+				*Return the matrix
+				return matrix results = results
 
 			}
 				
@@ -425,6 +436,10 @@ program clustersampsim
 					save "`savesims'", replace
 				
 					}
+
+				*Return the matrix
+				return matrix results = results
+				
 			}		
 
 				restore
